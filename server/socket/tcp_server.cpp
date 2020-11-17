@@ -1,5 +1,6 @@
 #include <iostream>
 #include <netinet/in.h>
+#include <strings.h>
 #include <sys/socket.h>
 #include <unistd.h>
 
@@ -31,6 +32,11 @@ int main(int argc, char* argv[])
     if (ret == -1) {
         std::cout << "Failed to set socket options!" << std::endl;
     }
+
+    localaddr.sin_family = AF_INET;
+    localaddr.sin_port = PORT;
+    localaddr.sin_addr.s_addr = INADDR_ANY;
+    bzero(&(localaddr.sin_zero), 8);
 
     // bind socket
     ret = bind(socket_fd, (struct sockaddr*)&localaddr, sizeof(struct sockaddr));
