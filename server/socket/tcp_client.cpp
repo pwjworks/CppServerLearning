@@ -1,55 +1,87 @@
-#include <arpa/inet.h>
-#include <iostream>
-#include <netinet/in.h>
 #include <stdio.h>
 #include <string.h>
-#include <sys/socket.h>
-#include <sys/types.h>
+#include <stdlib.h>
 #include <unistd.h>
 
-#define PORT 8111
-#define MESSAGE_LEN 1024
+#include <fcntl.h>
+#include <errno.h>
+#include <netdb.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
 
-int main(int argc, char* argv[])
+#define SERVER_PORT 8111
+#define MESSAGE_LENGTH 1024
+
+int main()
 {
-    int socket_fd;
+
     int ret = -1;
-    char sendbuf[MESSAGE_LEN] = {
-        0,
-    };
-    char recvbuf[MESSAGE_LEN] = {
-        0,
-    };
-    struct sockaddr_in serveraddr;
+    int socket_fd;
 
-    socket_fd = socket(AF_INET, SOCK_STREAM, 0);
-    if (socket_fd < 0) {
-        std::cout << "Failed to create socket!" << std::endl;
-        exit(-1);
-    }
-    serveraddr.sin_family = AF_INET;
-    serveraddr.sin_port = PORT;
-    serveraddr.sin_addr.s_addr = inet_addr("127.0.0.1");
-    ret = connect(socket_fd, (struct sockaddr*)&serveraddr, sizeof(struct sockaddr));
+    //server addr
+    struct sockaddr_in serverAddr;
 
-    if (ret < 0) {
-        std::cout << "Failed to connect server!" << std::endl;
-        exit(-1);
+    char sendbuf[MESSAGE_LENGTH];
+    char recvbuf[MESSAGE_LENGTH];
+
+    int data_len;
+
+    if ((socket_fd = socket(AF_INET, SOCK_STREAM, 0)) < 0)
+    {
+        perror("socket");
+        return 1;
     }
-    while (1) {
-        fgets(sendbuf, MESSAGE_LEN, stdin);
+
+    serverAddr.sin_family = AF_INET;
+    serverAddr.sin_port = htons(SERVER_PORT);
+
+    //inet_addr()函数，将点分十进制IP转换成网络字节序IP
+    serverAddr.sin_addr.s_addr = inet_addr("127.0.0.1");
+    //serverAddr.sin_addr.s_addr = inet_addr("127.0.0.1");
+
+    if (connect(socket_fd, (struct sockaddr*)&serverAddr, sizeof(serverAddr)) < 0)
+    {
+        perror("connect");
+        return 1;
+    }
+
+    printf("success to connect server...\n");
+
+    while (1)
+    {
+        memset(sendbuf, 0, MESSAGE_LENGTH);
+
+        printf("<<<<send message:");
+
+        fgets(sendbuf, MESSAGE_LENGTH, stdin);
+        //printf("\n");
         ret = send(socket_fd, sendbuf, strlen(sendbuf), 0);
         if (ret <= 0) {
-            std::cout << "Failed to send data!" << std::endl;
-            exit(-1);
+            printf("the connection is disconnection!\n");
             break;
         }
+
         if (strcmp(sendbuf, "quit") == 0) {
             break;
         }
-        ret = recv(socket_fd, recvbuf, MESSAGE_LEN, 0);
-        recvbuf[ret] = '\0';
-        std::cout << "recv:" << recvbuf << std::endl;
+
+        printf(">>> echo message:");
+
+        recvbuf[0] = '\0';
+        data_len = recv(socket_fd, recvbuf, MESSAGE_LENGTH, 0);
+
+        recvbuf[data_len] = '\0';
+
+        printf("%s\n", recvbuf);
+
     }
+
     close(socket_fd);
+
+    return 0;
+
 }
+
